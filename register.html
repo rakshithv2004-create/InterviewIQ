@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Create your free InterviewIQ account to start AI-powered interview practice for BCA, BCOM, and BBA job roles.">
+    <title>Sign Up Free — InterviewIQ</title>
+    <link rel="icon" href="images/logo.png" type="image/png">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <!-- Navbar -->
+    <nav class="topnav">
+        <div class="container">
+            <a href="index.html" class="topnav__logo">
+                <img src="images/logo.png" alt="InterviewIQ">
+            </a>
+            <ul class="topnav__links"></ul>
+            <div class="topnav__actions">
+                <a href="login.html" class="btn btn--ghost btn--sm">Log In</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Auth Card -->
+    <main class="auth-page">
+        <div class="auth-card" id="register-card">
+            <div style="text-align:center;margin-bottom:1.25rem;"><img src="images/logo.png" alt="InterviewIQ"
+                    style="height:52px;margin:0 auto;"></div>
+            <h1 class="auth-card__title">Start for free 🚀</h1>
+            <p class="auth-card__sub">Create your account and begin practicing AI-powered interview questions in under
+                60 seconds.</p>
+
+            <form class="auth-card__form" onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label for="reg-name">Full name</label>
+                    <input type="text" id="reg-name" placeholder="Rakshit Kumar" required>
+                </div>
+                <div class="form-group">
+                    <label for="reg-email">Email address</label>
+                    <input type="email" id="reg-email" placeholder="you@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="reg-course">Which course are you in?</label>
+                    <select id="reg-course" required>
+                        <option value="">Select your course</option>
+                        <option value="BCA">BCA — Computer Applications</option>
+                        <option value="BCOM">BCOM — Commerce</option>
+                        <option value="BBA">BBA — Business Administration</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="reg-password">Create a password</label>
+                    <input type="password" id="reg-password" placeholder="At least 8 characters" required minlength="8">
+                </div>
+                <button type="submit" class="btn btn--coral auth-card__submit" id="register-btn">
+                    Create My Account →
+                </button>
+            </form>
+
+            <p class="auth-card__footer">
+                Already have an account? <a href="login.html">Log in here</a>
+            </p>
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@15.0.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="js/appwrite-config.js"></script>
+    <script src="js/toast.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        gsap.from('#register-card', { opacity: 0, y: 30, duration: 0.5, ease: 'power3.out' });
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            const name = document.getElementById('reg-name').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
+            const course = document.getElementById('reg-course').value;
+            const password = document.getElementById('reg-password').value;
+            const btn = document.getElementById('register-btn');
+
+            if (!course) {
+                Toast.error('Please select your course!');
+                return;
+            }
+
+            btn.textContent = 'Creating account…';
+            btn.disabled = true;
+
+            const result = await Auth.register(email, password, name, course);
+
+            if (result.success) {
+                localStorage.setItem('userCourse', course);
+                Toast.success('Account created! Let\'s get started 🎉');
+                gsap.to('#register-card', {
+                    scale: 0.95, opacity: 0, duration: 0.3,
+                    onComplete: () => location.href = 'courses.html'
+                });
+            } else {
+                Toast.error(result.error || 'Registration failed. Try again.');
+                btn.textContent = 'Create My Account →';
+                btn.disabled = false;
+                gsap.to('#register-card', { x: -8, duration: 0.06, yoyo: true, repeat: 5 });
+            }
+        }
+
+        try {
+            Auth.getCurrentUser().then(user => {
+                if (user) {
+                    Toast.info('You\'re already signed in!');
+                    setTimeout(() => location.href = 'courses.html', 500);
+                }
+            }).catch(() => { });
+        } catch (e) { }
+    </script>
+
+</body>
+
+</html>

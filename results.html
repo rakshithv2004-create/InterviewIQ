@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="View your interview results, AI feedback, and learning resources. See what you got right and where you can improve.">
+    <title>Your Results — InterviewIQ</title>
+    <link rel="icon" href="images/logo.png" type="image/png">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <!-- Navbar -->
+    <nav class="topnav">
+        <div class="container">
+            <a href="index.html" class="topnav__logo">
+                <img src="images/logo.png" alt="InterviewIQ">
+            </a>
+            <ul class="topnav__links">
+                <li><a href="courses.html">Try Another Role</a></li>
+            </ul>
+            <div class="topnav__actions">
+                <a href="courses.html" class="btn btn--violet btn--sm">Practice Again</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Score Hero -->
+    <section class="results-hero" id="results-hero">
+        <div class="container">
+            <span class="page-header__badge page-header__badge--teal">✦ Step 3 of 3</span>
+            <h1 class="page-header__title" id="results-title">Here's how you did</h1>
+            <p class="page-header__sub" id="results-sub">Loading your results…</p>
+
+            <div class="score-ring" id="score-ring">
+                <svg viewBox="0 0 160 160">
+                    <circle class="score-ring__bg" cx="80" cy="80" r="70" />
+                    <circle class="score-ring__fill" id="score-fill" cx="80" cy="80" r="70" />
+                </svg>
+                <div class="score-ring__value">
+                    <span class="score-ring__number" id="score-number">0</span>
+                    <span class="score-ring__label">Score</span>
+                </div>
+            </div>
+
+            <div class="results-stats" id="results-stats">
+                <div class="results-stats__item results-stats__item--pass">
+                    <span>✓</span> <span id="passed-count">0</span> Passed
+                </div>
+                <div class="results-stats__item results-stats__item--fail">
+                    <span>✗</span> <span id="failed-count">0</span> Needs Work
+                </div>
+            </div>
+
+            <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;">
+                <a href="courses.html" class="btn btn--violet">Try Another Role →</a>
+                <button class="btn btn--ghost" onclick="location.reload()">View Again</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Answer Breakdown -->
+    <section class="answers-list" id="answers-list">
+        <!-- Rendered by JS -->
+    </section>
+
+    <!-- Bottom CTA -->
+    <section style="text-align:center;padding:2rem 0 3rem;">
+        <a href="courses.html" class="btn btn--coral btn--lg">Start a New Interview →</a>
+    </section>
+
+    <!-- Mini Footer -->
+    <footer class="mini-footer">
+        <p>© 2026 <a href="index.html">InterviewIQ</a> · Keep practicing, keep improving.</p>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@15.0.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="js/appwrite-config.js"></script>
+    <script src="js/toast.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/course-data.js"></script>
+    <script>
+        const results = JSON.parse(localStorage.getItem('lastResults'));
+
+        if (!results) {
+            document.getElementById('results-title').textContent = 'No results found';
+            document.getElementById('results-sub').textContent = 'Start an interview first!';
+        } else {
+            // Header
+            document.getElementById('results-title').textContent =
+                results.totalScore >= 70 ? 'Great job! 🎉' :
+                    results.totalScore >= 50 ? 'Good effort! 💪' : 'Keep practicing! 📚';
+            document.getElementById('results-sub').textContent =
+                `${results.roleName} · ${results.totalQuestions} questions · Score: ${results.totalScore}/100`;
+
+            document.getElementById('passed-count').textContent = results.passedCount;
+            document.getElementById('failed-count').textContent = results.failedCount;
+
+            // Animate score ring
+            const circumference = 2 * Math.PI * 70;
+            const scoreFill = document.getElementById('score-fill');
+            scoreFill.style.strokeDasharray = circumference;
+            scoreFill.style.strokeDashoffset = circumference;
+
+            // Color ring based on score
+            if (results.totalScore >= 70) scoreFill.style.stroke = '#38B2AC';
+            else if (results.totalScore >= 50) scoreFill.style.stroke = '#F6AD55';
+            else scoreFill.style.stroke = '#FF6B6B';
+
+            setTimeout(() => {
+                const offset = circumference * (1 - results.totalScore / 100);
+                scoreFill.style.strokeDashoffset = offset;
+            }, 300);
+
+            // Count up score number
+            const scoreEl = document.getElementById('score-number');
+            gsap.to({ val: 0 }, {
+                val: results.totalScore,
+                duration: 1.5,
+                ease: 'power2.out',
+                delay: 0.3,
+                onUpdate: function () { scoreEl.textContent = Math.round(this.targets()[0].val); }
+            });
+
+            // Render answers
+            const list = document.getElementById('answers-list');
+            results.answers.forEach((a, i) => {
+                const passClass = a.passed ? 'pass' : 'fail';
+                const resources = LearningResources[a.category] || LearningResources['default'] || [];
+                const resourcesHTML = !a.passed && resources.length ? `
+          <div style="margin-top:.75rem;">
+            <p style="font-size:.78rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:1px;margin-bottom:.4rem;">📚 Study These:</p>
+            ${resources.slice(0, 2).map(r =>
+                    `<a href="${r.url}" target="_blank" style="display:block;font-size:.85rem;color:var(--violet);font-weight:600;margin-bottom:.25rem;">${r.title} →</a>`
+                ).join('')}
+          </div>
+        ` : '';
+
+                list.innerHTML += `
+          <div class="answer-item">
+            <div class="answer-item__head">
+              <span class="answer-item__q-num answer-item__q-num--${passClass}">Q${i + 1} · ${a.passed ? 'Passed' : 'Failed'}</span>
+              <span class="answer-item__score" style="color:${a.passed ? 'var(--teal)' : 'var(--coral)'}">${a.score}/100</span>
+            </div>
+            <p class="answer-item__question">${a.questionText}</p>
+            <div class="answer-item__feedback">
+              ${a.feedback || 'No feedback available.'}
+              ${resourcesHTML}
+            </div>
+          </div>
+        `;
+            });
+
+            // Animate answer items
+            gsap.from('.answer-item', {
+                opacity: 0, y: 20, duration: 0.4, stagger: 0.1, delay: 0.8, ease: 'power2.out'
+            });
+        }
+    </script>
+
+</body>
+
+</html>

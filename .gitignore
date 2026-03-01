@@ -1,0 +1,26 @@
+# Environment & secrets
+.env
+.env.*
+
+# Server-side deployment scripts (contain API keys)
+deploy-functions.js
+setup-appwrite.js
+
+# Dependencies
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Temp
+*.tmp
+*.tar.gz

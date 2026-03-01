@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Log in to InterviewIQ to save your progress and track your interview history.">
+    <title>Log In — InterviewIQ</title>
+    <link rel="icon" href="images/logo.png" type="image/png">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <!-- Navbar -->
+    <nav class="topnav">
+        <div class="container">
+            <a href="index.html" class="topnav__logo">
+                <img src="images/logo.png" alt="InterviewIQ">
+            </a>
+            <ul class="topnav__links"></ul>
+            <div class="topnav__actions">
+                <a href="register.html" class="btn btn--violet btn--sm">Sign Up Free</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Auth Card -->
+    <main class="auth-page">
+        <div class="auth-card" id="login-card">
+            <div style="text-align:center;margin-bottom:1.25rem;"><img src="images/logo.png" alt="InterviewIQ"
+                    style="height:52px;margin:0 auto;"></div>
+            <h1 class="auth-card__title">Welcome back 👋</h1>
+            <p class="auth-card__sub">Log in to continue practicing and track your interview scores.</p>
+
+            <form class="auth-card__form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="login-email">Email address</label>
+                    <input type="email" id="login-email" placeholder="you@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" placeholder="Enter your password" required minlength="8">
+                </div>
+                <button type="submit" class="btn btn--violet auth-card__submit" id="login-btn">
+                    Log In →
+                </button>
+            </form>
+
+            <p class="auth-card__footer">
+                Don't have an account? <a href="register.html">Create one for free</a>
+            </p>
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@15.0.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="js/appwrite-config.js"></script>
+    <script src="js/toast.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        // Card entrance animation
+        gsap.from('#login-card', { opacity: 0, y: 30, duration: 0.5, ease: 'power3.out' });
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+            const btn = document.getElementById('login-btn');
+
+            btn.textContent = 'Logging in…';
+            btn.disabled = true;
+
+            const result = await Auth.login(email, password);
+
+            if (result.success) {
+                Toast.success('Welcome back! Redirecting…');
+                gsap.to('#login-card', {
+                    scale: 0.95, opacity: 0, duration: 0.3,
+                    onComplete: () => location.href = 'courses.html'
+                });
+            } else {
+                Toast.error(result.error || 'Invalid email or password.');
+                btn.textContent = 'Log In →';
+                btn.disabled = false;
+                gsap.to('#login-card', { x: -8, duration: 0.06, yoyo: true, repeat: 5 });
+            }
+        }
+
+        // Redirect if already logged in
+        try {
+            Auth.getCurrentUser().then(user => {
+                if (user) {
+                    Toast.info('You\'re already logged in!');
+                    setTimeout(() => location.href = 'courses.html', 500);
+                }
+            }).catch(() => { });
+        } catch (e) { }
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Answer timed interview questions powered by AI. Get instant feedback and scores for your responses.">
+    <title>Interview Room — InterviewIQ</title>
+    <link rel="icon" href="images/logo.png" type="image/png">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <!-- Navbar -->
+    <nav class="topnav">
+        <div class="container">
+            <a href="index.html" class="topnav__logo">
+                <img src="images/logo.png" alt="InterviewIQ">
+            </a>
+            <ul class="topnav__links">
+                <li><a href="courses.html">← Change Role</a></li>
+            </ul>
+            <div class="topnav__actions">
+                <button class="btn btn--ghost btn--sm"
+                    onclick="if(confirm('End this session?'))location.href='courses.html'">Exit Interview</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading" style="display:none;">
+        <img src="images/logo.png" alt="InterviewIQ" style="height:64px;margin-bottom:1.5rem;">
+        <div class="loading-dots">
+            <span></span><span></span><span></span>
+        </div>
+        <p id="loading-text">Generating your questions…</p>
+    </div>
+
+    <!-- Page Header -->
+    <section class="page-header" id="interview-header">
+        <div class="container">
+            <span class="page-header__badge page-header__badge--coral">✦ Step 2 of 3</span>
+            <h1 class="page-header__title">Your interview is live</h1>
+            <p class="page-header__sub">Answer each question before the time runs out. Be specific and give detailed
+                responses.</p>
+        </div>
+    </section>
+
+    <!-- Interview Room -->
+    <section class="interview-room" id="interview-room">
+
+        <!-- Meta bar -->
+        <div class="interview-room__meta" id="meta-bar">
+            <div class="interview-room__info">
+                <span class="interview-room__role" id="role-label">Loading…</span>
+                <span class="interview-room__progress-text" id="progress-label">Q 1 / 10</span>
+            </div>
+            <div class="timer-ring" id="timer-ring">
+                <svg viewBox="0 0 56 56">
+                    <circle class="timer-ring__bg" cx="28" cy="28" r="25" />
+                    <circle class="timer-ring__fill" id="timer-fill" cx="28" cy="28" r="25" />
+                </svg>
+                <div class="timer-ring__text" id="timer-text">2:00</div>
+            </div>
+        </div>
+
+        <!-- Question -->
+        <div class="question-card" id="question-card">
+            <span class="question-card__cat" id="q-category">Loading</span>
+            <p class="question-card__text" id="q-text">Preparing your question…</p>
+            <p class="question-card__diff" id="q-difficulty"></p>
+        </div>
+
+        <!-- Answer -->
+        <div class="answer-box">
+            <textarea id="answer-input"
+                placeholder="Type your answer here. Be detailed and specific — quality matters more than length."
+                disabled></textarea>
+            <div class="answer-box__actions">
+                <span class="answer-box__wordcount" id="word-count">0 words</span>
+                <div style="display:flex;gap:.5rem;">
+                    <button class="btn btn--ghost btn--sm" id="skip-btn" onclick="skipQuestion()" disabled>Skip
+                        →</button>
+                    <button class="btn btn--violet" id="submit-btn" onclick="submitCurrentAnswer()" disabled>Submit
+                        Answer</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="progress-bar">
+            <div class="progress-bar__fill" id="progress-fill" style="width: 0%"></div>
+        </div>
+
+    </section>
+
+    <!-- Mini Footer -->
+    <footer class="mini-footer">
+        <p>© 2026 <a href="index.html">InterviewIQ</a></p>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@15.0.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="js/appwrite-config.js"></script>
+    <script src="js/toast.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/course-data.js"></script>
+    <script src="js/interview-engine.js"></script>
+    <script>
+        // DOM refs
+        const els = {
+            loading: document.getElementById('loading'),
+            loadingText: document.getElementById('loading-text'),
+            roleLabel: document.getElementById('role-label'),
+            progressLabel: document.getElementById('progress-label'),
+            timerFill: document.getElementById('timer-fill'),
+            timerText: document.getElementById('timer-text'),
+            qCategory: document.getElementById('q-category'),
+            qText: document.getElementById('q-text'),
+            qDifficulty: document.getElementById('q-difficulty'),
+            answerInput: document.getElementById('answer-input'),
+            wordCount: document.getElementById('word-count'),
+            submitBtn: document.getElementById('submit-btn'),
+            skipBtn: document.getElementById('skip-btn'),
+            progressFill: document.getElementById('progress-fill')
+        };
+
+        let timerInterval = null;
+        let timeRemaining = 0;
+        let questionStartTime = 0;
+
+        // Parse URL params
+        const params = new URLSearchParams(location.search);
+        const course = params.get('course');
+        const roleId = params.get('role');
+
+        if (!course || !roleId) {
+            Toast.error('No course or role selected!');
+            setTimeout(() => location.href = 'courses.html', 1000);
+        }
+
+        // Word count
+        els.answerInput.addEventListener('input', () => {
+            const words = els.answerInput.value.trim().split(/\s+/).filter(w => w).length;
+            els.wordCount.textContent = words + ' word' + (words !== 1 ? 's' : '');
+        });
+
+        // Start the interview
+        async function init() {
+            els.loading.style.display = 'flex';
+
+            try {
+                await InterviewEngine.startSession(course, roleId);
+                els.loading.style.display = 'none';
+                showQuestion();
+            } catch (e) {
+                els.loadingText.textContent = 'Something went wrong…';
+                Toast.error(e.message);
+            }
+        }
+
+        function showQuestion() {
+            const q = InterviewEngine.getCurrentQuestion();
+            if (!q) { finishInterview(); return; }
+
+            const state = InterviewEngine.getState();
+            els.roleLabel.textContent = state.roleName;
+            els.progressLabel.textContent = `Q ${q.index + 1} / ${q.total}`;
+            els.progressFill.style.width = `${(q.index / q.total) * 100}%`;
+
+            els.qCategory.textContent = q.category || 'General';
+            els.qText.textContent = q.text;
+
+            const diff = (q.difficulty || 'medium').toLowerCase();
+            els.qDifficulty.innerHTML = `Difficulty: <span class="diff-${diff}">${diff}</span>`;
+
+            els.answerInput.value = '';
+            els.answerInput.disabled = false;
+            els.submitBtn.disabled = false;
+            els.skipBtn.disabled = false;
+            els.wordCount.textContent = '0 words';
+
+            questionStartTime = Date.now();
+            startTimer(q.timeLimit || 120);
+
+            // Animate question in
+            gsap.from('.question-card', { opacity: 0, y: 20, duration: 0.4 });
+            els.answerInput.focus();
+        }
+
+        function startTimer(seconds) {
+            clearInterval(timerInterval);
+            timeRemaining = seconds;
+            const total = seconds;
+            const circumference = 2 * Math.PI * 25; // r=25
+
+            updateTimerDisplay(circumference, total);
+
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                updateTimerDisplay(circumference, total);
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    submitCurrentAnswer(); // auto-submit
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay(circumference, total) {
+            const pct = timeRemaining / total;
+            const offset = circumference * (1 - pct);
+            els.timerFill.style.strokeDasharray = circumference;
+            els.timerFill.style.strokeDashoffset = offset;
+
+            const m = Math.floor(timeRemaining / 60);
+            const s = timeRemaining % 60;
+            els.timerText.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+
+            // Color changes
+            els.timerFill.classList.remove('timer-ring__fill--warning', 'timer-ring__fill--danger');
+            if (pct <= 0.2) els.timerFill.classList.add('timer-ring__fill--danger');
+            else if (pct <= 0.4) els.timerFill.classList.add('timer-ring__fill--warning');
+        }
+
+        async function submitCurrentAnswer() {
+            clearInterval(timerInterval);
+            const answer = els.answerInput.value.trim();
+            const timeTaken = Math.round((Date.now() - questionStartTime) / 1000);
+
+            els.submitBtn.disabled = true;
+            els.skipBtn.disabled = true;
+            els.answerInput.disabled = true;
+            els.submitBtn.textContent = 'Evaluating…';
+
+            const result = await InterviewEngine.submitAnswer(answer, timeTaken);
+
+            if (result.evaluation.passed) {
+                Toast.success(`Score: ${result.evaluation.score}/100 ✓`);
+            } else {
+                Toast.error(`Score: ${result.evaluation.score}/100 — needs improvement`);
+            }
+
+            els.submitBtn.textContent = 'Submit Answer';
+
+            setTimeout(() => {
+                if (result.hasNext) showQuestion();
+                else finishInterview();
+            }, 800);
+        }
+
+        function skipQuestion() {
+            submitCurrentAnswer(); // submit empty
+        }
+
+        function finishInterview() {
+            const results = InterviewEngine.completeSession();
+            localStorage.setItem('lastResults', JSON.stringify(results));
+            Toast.success('Interview complete! Loading results…');
+            setTimeout(() => location.href = 'results.html', 600);
+        }
+
+        init();
+    </script>
+
+</body>
+
+</html>

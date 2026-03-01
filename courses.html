@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Choose your course and target role. Start an AI-powered mock interview tailored to BCA, BCOM, and BBA career paths.">
+    <title>Choose Your Path — InterviewIQ</title>
+    <link rel="icon" href="images/logo.png" type="image/png">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <!-- Navbar -->
+    <nav class="topnav">
+        <div class="container">
+            <a href="index.html" class="topnav__logo">
+                <img src="images/logo.png" alt="InterviewIQ">
+            </a>
+            <ul class="topnav__links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="courses.html" style="color:var(--violet);">Courses</a></li>
+            </ul>
+            <div class="topnav__actions" id="nav-auth">
+                <a href="login.html" class="btn btn--ghost btn--sm">Log In</a>
+                <a href="register.html" class="btn btn--violet btn--sm">Sign Up Free</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="page-header">
+        <div class="container">
+            <span class="page-header__badge page-header__badge--violet">✦ Step 1 of 3</span>
+            <h1 class="page-header__title">Choose your course & dream role</h1>
+            <p class="page-header__sub">Pick the course you're studying and the job role you want to practice for. We'll
+                handle the rest.</p>
+        </div>
+    </section>
+
+    <!-- Course Cards -->
+    <section class="container">
+        <div class="courses-grid" id="courses-grid">
+            <!-- Rendered by JS -->
+        </div>
+    </section>
+
+    <!-- Mini Footer -->
+    <footer class="mini-footer">
+        <p>© 2026 <a href="index.html">InterviewIQ</a> · Practice smarter, interview better.</p>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@15.0.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="js/appwrite-config.js"></script>
+    <script src="js/toast.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/course-data.js"></script>
+    <script>
+        // Render course cards
+        const grid = document.getElementById('courses-grid');
+        const accents = ['violet', 'coral', 'teal'];
+        const emojis = ['💻', '📊', '📈'];
+
+        Object.keys(CourseData).forEach((key, i) => {
+            const c = CourseData[key];
+            const accent = accents[i % 3];
+            const emoji = emojis[i % 3];
+
+            const options = c.roles.map(r =>
+                `<option value="${r.id}">${r.name}</option>`
+            ).join('');
+
+            grid.innerHTML += `
+        <div class="card course-card course-card--${accent}">
+          <span class="course-card__emoji">${emoji}</span>
+          <h2 class="course-card__name">${key}</h2>
+          <p class="course-card__full">${c.fullName}</p>
+          <p class="course-card__roles-label">${c.roles.length} roles available</p>
+          <select id="role-${key}" aria-label="Select job role">
+            <option value="">Pick a job role…</option>
+            ${options}
+          </select>
+          <button class="btn btn--${accent}" onclick="startInterview('${key}')">
+            Start Interview →
+          </button>
+        </div>
+      `;
+        });
+
+        // Animate cards in
+        gsap.from('.course-card', {
+            opacity: 0, y: 30, duration: 0.5, stagger: 0.15, ease: 'power2.out', delay: 0.2
+        });
+        // Safety: force visible after 2s
+        setTimeout(function () {
+            document.querySelectorAll('.course-card').forEach(function (el) {
+                if (parseFloat(getComputedStyle(el).opacity) < 0.1) gsap.set(el, { opacity: 1, y: 0 });
+            });
+        }, 2000);
+
+        function startInterview(course) {
+            const select = document.getElementById(`role-${course}`);
+            if (!select.value) {
+                Toast.error('Please pick a role first!');
+                gsap.to(select, { x: -6, duration: 0.06, yoyo: true, repeat: 5 });
+                return;
+            }
+            window.location.href = `interview.html?course=${course}&role=${select.value}`;
+        }
+
+        // Auth nav
+        try {
+            Auth.getCurrentUser().then(user => {
+                if (user) {
+                    document.getElementById('nav-auth').innerHTML = `
+            <span style="font-weight:700;color:var(--violet);font-size:.9rem;">Hi, ${user.name.split(' ')[0]}!</span>
+            <button onclick="Auth.logout().then(()=>location.href='index.html')" class="btn btn--ghost btn--sm">Log Out</button>
+          `;
+                }
+            }).catch(() => { });
+        } catch (e) { }
+    </script>
+
+</body>
+
+</html>
