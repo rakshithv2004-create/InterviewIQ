@@ -127,6 +127,9 @@
                 onUpdate: function () { scoreEl.textContent = Math.round(this.targets()[0].val); }
             });
 
+            // XSS-safe HTML escaper
+            function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
             // Render answers
             const list = document.getElementById('answers-list');
             results.answers.forEach((a, i) => {
@@ -136,7 +139,7 @@
           <div style="margin-top:.75rem;">
             <p style="font-size:.78rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:1px;margin-bottom:.4rem;">📚 Study These:</p>
             ${resources.slice(0, 2).map(r =>
-                    `<a href="${r.url}" target="_blank" style="display:block;font-size:.85rem;color:var(--violet);font-weight:600;margin-bottom:.25rem;">${r.title} →</a>`
+                    `<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer" style="display:block;font-size:.85rem;color:var(--violet);font-weight:600;margin-bottom:.25rem;">${esc(r.title)} →</a>`
                 ).join('')}
           </div>
         ` : '';
@@ -147,9 +150,9 @@
               <span class="answer-item__q-num answer-item__q-num--${passClass}">Q${i + 1} · ${a.passed ? 'Passed' : 'Failed'}</span>
               <span class="answer-item__score" style="color:${a.passed ? 'var(--teal)' : 'var(--coral)'}">${a.score}/100</span>
             </div>
-            <p class="answer-item__question">${a.questionText}</p>
+            <p class="answer-item__question">${esc(a.questionText)}</p>
             <div class="answer-item__feedback">
-              ${a.feedback || 'No feedback available.'}
+              ${esc(a.feedback) || 'No feedback available.'}
               ${resourcesHTML}
             </div>
           </div>

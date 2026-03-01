@@ -37,7 +37,7 @@ Respond ONLY with a valid JSON array with this structure:
 
     } catch (err) {
         error('Function error: ' + err.message);
-        return res.json({ error: err.message }, 500);
+        return res.json({ error: 'Internal server error' }, 500);
     }
 };
 

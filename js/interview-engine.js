@@ -4,7 +4,7 @@
    ============================================ */
 
 const InterviewEngine = (() => {
-    const OPENAI_KEY = ''; // Set via Appwrite Functions env — never hardcode in frontend
+    // No API keys in frontend — all AI calls go through Appwrite Functions
 
     let state = {
         course: null,
@@ -20,113 +20,51 @@ const InterviewEngine = (() => {
         isActive: false
     };
 
-    // ─── AI: Generate questions ─────────────────────────────
+    // ─── AI: Generate questions (Appwrite Functions only) ────
     async function generateQuestionsAI(course, role, roleName) {
         try {
-            // Try Appwrite Function first
             const funcResult = await tryAppwriteFunction('generate-questions', {
                 course, roleId: role, roleName,
                 courseName: CourseData[course].fullName
             });
             if (funcResult && funcResult.questions) return funcResult.questions;
         } catch (e) {
-            console.log('Function call failed, falling back to direct API:', e.message);
+            console.warn('AI generation unavailable:', e.message);
         }
-
-        // Fallback: direct OpenAI call
-        try {
-            const prompt = `You are an expert interview coach. Generate exactly 10 interview questions for a ${roleName} position. The candidate is a ${CourseData[course].fullName} graduate.
-
-Requirements:
-- Mix of technical, behavioral, and situational questions
-- Each question should be specific to the ${roleName} role
-- Include a difficulty level: easy, medium, or hard
-- Include a category for each question
-- Set appropriate time limits: easy=120s, medium=150s, hard=180s
-
-Respond ONLY with a valid JSON array:
-[{"text": "question text", "category": "Category Name", "difficulty": "easy|medium|hard", "timeLimit": 120}]`;
-
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + OPENAI_KEY
-                },
-                body: JSON.stringify({
-                    model: 'gpt-4o-mini',
-                    messages: [{ role: 'user', content: prompt }],
-                    temperature: 0.7,
-                    max_tokens: 2000
-                })
-            });
-
-            if (!response.ok) throw new Error('AI unavailable');
-            const data = await response.json();
-            const content = data.choices[0].message.content.trim();
-            const jsonStr = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-            return JSON.parse(jsonStr);
-        } catch (e) {
-            console.warn('AI generation failed:', e.message);
-            return null;
-        }
+        // No frontend fallback — use local question bank instead
+        return null;
     }
 
-    // ─── AI: Evaluate answer ────────────────────────────────
+    // ─── AI: Evaluate answer (Appwrite Functions only) ──────
     async function evaluateAnswerAI(questionText, answerText, roleName) {
         if (!answerText || answerText.trim().length < 10) {
             return { score: 0, feedback: 'No answer or answer too short.', passed: false };
         }
 
         try {
-            // Try Appwrite Function first
             const funcResult = await tryAppwriteFunction('evaluate-answer', {
-                questionText, answerText, roleName
+                questionText, answerText: answerText.substring(0, 5000), roleName
             });
-            if (funcResult && typeof funcResult.score === 'number') return funcResult;
+            if (funcResult && typeof funcResult.score === 'number') {
+                // Validate & clamp AI output
+                return {
+                    score: Math.max(0, Math.min(100, Math.round(funcResult.score))),
+                    feedback: String(funcResult.feedback || '').substring(0, 1000),
+                    passed: Boolean(funcResult.passed)
+                };
+            }
         } catch (e) {
-            console.log('Evaluate function failed, falling back:', e.message);
+            console.warn('AI evaluation unavailable:', e.message);
         }
 
-        // Fallback: direct OpenAI
-        try {
-            const prompt = `You are an expert interviewer evaluating a candidate's answer for a ${roleName} position.
-
-Question: "${questionText}"
-Candidate's Answer: "${answerText}"
-
-Evaluate the answer. Score 60+ is passing. Respond ONLY with valid JSON:
-{"score": <0-100>, "feedback": "<2-3 sentence feedback>", "passed": <true if score >= 60>}`;
-
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + OPENAI_KEY
-                },
-                body: JSON.stringify({
-                    model: 'gpt-4o-mini',
-                    messages: [{ role: 'user', content: prompt }],
-                    temperature: 0.3,
-                    max_tokens: 300
-                })
-            });
-
-            if (!response.ok) throw new Error('AI unavailable');
-            const data = await response.json();
-            const content = data.choices[0].message.content.trim();
-            const jsonStr = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-            return JSON.parse(jsonStr);
-        } catch (e) {
-            console.warn('AI evaluation failed:', e.message);
-            const wordCount = answerText.trim().split(/\s+/).length;
-            const score = Math.min(wordCount * 3, 85);
-            return {
-                score,
-                feedback: 'AI evaluation temporarily unavailable. Score based on answer detail.',
-                passed: score >= 60
-            };
-        }
+        // Fallback: simple word-count score (no API call from frontend)
+        const wordCount = answerText.trim().split(/\s+/).length;
+        const score = Math.min(wordCount * 3, 85);
+        return {
+            score,
+            feedback: 'AI evaluation temporarily unavailable. Score based on answer detail.',
+            passed: score >= 60
+        };
     }
 
     // ─── Try calling an Appwrite Function ───────────────────

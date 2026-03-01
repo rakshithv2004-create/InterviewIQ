@@ -22,20 +22,20 @@ module.exports = async ({ req, res, log, error }) => {
             });
         }
 
+        // Limit answer length to prevent cost abuse
+        if (answerText.length > 5000) {
+            answerText = answerText.substring(0, 5000);
+        }
+
         log(`Evaluating answer for: ${roleName}`);
 
-        const prompt = `You are an expert interviewer evaluating a candidate's answer for a ${roleName} position.
+        const systemMsg = `You are an expert interviewer evaluating answers for a ${roleName} position. Evaluate strictly but fairly on: relevance, accuracy, completeness, clarity. Score 60+ is passing. Respond ONLY with valid JSON: {"score": <0-100>, "feedback": "<2-3 sentences>", "passed": <true if score >= 60>}`;
+        const userMsg = `Question: "${questionText}"\nCandidate's Answer: "${answerText}"`;
 
-Question: "${questionText}"
-Candidate's Answer: "${answerText}"
-
-Evaluate the answer strictly but fairly. Consider: relevance, accuracy, completeness, and clarity.
-Score 60+ means passing.
-
-Respond ONLY with valid JSON (no markdown, no extra text):
-{"score": <0-100 integer>, "feedback": "<2-3 sentence constructive feedback mentioning what was good and what could be improved>", "passed": <true if score >= 60, else false>}`;
-
-        const evaluation = await callOpenAI(prompt, 400);
+        const evaluation = await callOpenAI([
+            { role: 'system', content: systemMsg },
+            { role: 'user', content: userMsg }
+        ], 400);
 
         return res.json({
             score: Math.round(evaluation.score || 0),
@@ -57,11 +57,11 @@ Respond ONLY with valid JSON (no markdown, no extra text):
 };
 
 // ─── OpenAI call helper ───────────────────────────────────────
-function callOpenAI(prompt, maxTokens) {
+function callOpenAI(messages, maxTokens) {
     return new Promise((resolve, reject) => {
         const body = JSON.stringify({
             model: 'gpt-4o-mini',
-            messages: [{ role: 'user', content: prompt }],
+            messages: messages,
             temperature: 0.2,
             max_tokens: maxTokens
         });
